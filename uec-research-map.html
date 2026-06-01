@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大学キャンパスマップ</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* 画面いっぱいに地図を表示する設定 */
+        html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; }
+        .popup-img { width: 100%; max-width: 200px; height: auto; display: block; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 1. 地図の初期化（大学の「緯度・経度」と「ズームレベル」を指定）
+        const map = L.map('map').setView([35.658639, 139.544361], 17);
+
+        // 2. OpenStreetMapの地図タイルを表示
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // 3. 研究室のデータ（位置情報、紹介文、画像URL）
+        const labs = [
+            {
+                name: "第1研究室 (AI・データサイエンス)",
+                lat: 35.658639, 
+                lng: 139.544361,
+                desc: "未来のAI技術を研究しています。オープンキャンパス実施中！",
+                img: "https://via.placeholder.com/200x120" // 画像のURL
+            },
+            {
+                name: "第2研究室 (ロボティクス)",
+                lat: 35.65811553285512, 
+                lng: 139.544335861327,
+                desc: "二足歩行ロボットの開発を行っています。見学歓迎！",
+                img: "https://via.placeholder.com/200x120"
+            }
+        ];
+
+        // 4. データをループ処理して地図上にピンを配置
+        labs.forEach(lab => {
+            const marker = L.marker([lab.lat, lab.lng]).addTo(map);
+            
+            // ピンをクリックしたときのポップアップ内容（HTMLで記述可能）
+            const popupContent = `
+                <h3>${lab.name}</h3>
+                <p>${lab.desc}</p>
+                <img src="${lab.img}" class="popup-img" alt="${lab.name}">
+            `;
+            
+            marker.bindPopup(popupContent);
+        });
+    </script>
+</body>
+</html>
