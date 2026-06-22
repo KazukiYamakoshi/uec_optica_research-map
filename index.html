@@ -1,61 +1,172 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>大学キャンパスマップ</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        /* 画面いっぱいに地図を表示する設定 */
-        html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; }
-        .popup-img { width: 100%; max-width: 200px; height: auto; display: block; margin-top: 5px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  /* マップ全体のコンテナ設定 */
+  #map-container {
+    position: relative;
+    width: 100%;
+    max-width: 800px; /* マップの最大幅 */
+    margin: 0 auto;
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+  }
+  
+  /* 背景となるマップ画像 */
+  .map-image {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* マップ上の研究室ピン（タブ） */
+  .marker {
+    position: absolute;
+    background-color: #ffffff;
+    border: 2px solid #007A87; /* 東キャンパスの緑色などに合わせられます */
+    border-radius: 20px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+  .marker:hover {
+    background-color: #007A87;
+    color: #ffffff;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+
+  /* モーダル（ポップアップ）の背景 */
+  #modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* モーダルの中身 */
+  .modal-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+    position: relative;
+    box-sizing: border-box;
+  }
+
+  /* 閉じるボタン */
+  .close-btn {
+    position: absolute;
+    top: 10px; right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+  }
+  .close-btn:hover { color: #000; }
+
+  .lab-title { margin-top: 0; color: #007A87; font-size: 20px; }
+  .lab-room { font-size: 14px; color: #555; margin-bottom: 10px; }
+  .lab-desc { font-size: 14px; line-height: 1.5; color: #333; }
+  .lab-img { width: 100%; border-radius: 4px; margin-top: 15px; display: none; }
+
+</style>
 </head>
 <body>
 
-    <div id="map"></div>
+<div id="map-container">
+  <img src="https://via.placeholder.com/800x1000?text=Campus+Map+Image" alt="キャンパスマップ" class="map-image">
+  
+  <div id="markers-layer"></div>
+</div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        // 1. 地図の初期化（大学の「緯度・経度」と「ズームレベル」を指定）
-        const map = L.map('map').setView([35.658639, 139.544361], 17);
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <span class="close-btn" onclick="closeModal(event)">&times;</span>
+    <h2 id="modal-title" class="lab-title">研究室名</h2>
+    <div id="modal-room" class="lab-room">場所: ---</div>
+    <p id="modal-desc" class="lab-desc">説明文がここに入ります。</p>
+    <img id="modal-image" class="lab-img" src="" alt="研究室の画像">
+  </div>
+</div>
 
-        // 2. OpenStreetMapの地図タイルを表示
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+<script>
+  // ③ 研究室のデータ一覧（ご提供いただいたポスター画像から一部抜粋）
+  const labData = [
+    {
+      name: "宮本 研",
+      room: "東6号館 617",
+      desc: "光波の空間分布に関する新現象の観測・創出・応用",
+      x: 35, // マップ画像の左端からの位置（%）
+      y: 45, // マップ画像の上端からの位置（%）
+      imgUrl: "https://via.placeholder.com/400x200?text=Miyamoto+Lab" // 詳細に表示する画像のURL
+    },
+    {
+      name: "奥野 研",
+      room: "東4号館周辺 401",
+      desc: "新規蛍光体材料、ナノ光材料開拓、半導体微細構造",
+      x: 55,
+      y: 50,
+      imgUrl: "" // 画像がない場合は空文字
+    },
+    {
+      name: "白川 研",
+      room: "西7号館 613",
+      desc: "独創的なアイディアで次世代レーザーの基礎研究・開発",
+      x: 30,
+      y: 70,
+      imgUrl: ""
+    }
+    // 同様に他の研究室も追加していきます...
+  ];
 
-        // 3. 研究室のデータ（位置情報、紹介文、画像URL）
-        const labs = [
-            {
-                name: "渡邉恵理子 研究室",
-                lat: 35.658639, 
-                lng: 139.544361,
-                desc: "光技術を核として、画像処理技術、情報・IT技術などを融合した、新しい計測システムや情報処理システムに関する研究開発",
-                img: "labs/eriko_watanabe.jpg" // 画像のURL
-            },
-            {
-                name: "美濃島薫　研究室",
-                lat: 35.65811553285512, 
-                lng: 139.544335861327,
-                desc: "光を自由自在に操作する「知的光シンセサイザ」の研究を行い、多次元情報の超精密計測・制御技術の高度実現を目指します！",
-                img: "labs/kaoru_minoshima.jpg"
-            }
-        ];
+  const markersLayer = document.getElementById('markers-layer');
 
-        // 4. データをループ処理して地図上にピンを配置
-        labs.forEach(lab => {
-            const marker = L.marker([lab.lat, lab.lng]).addTo(map);
-            
-            // ピンをクリックしたときのポップアップ内容（HTMLで記述可能）
-            const popupContent = `
-                <h3>${lab.name}</h3>
-                <p>${lab.desc}</p>
-                <img src="${lab.img}" class="popup-img" alt="${lab.name}">
-            `;
-            
-            marker.bindPopup(popupContent);
-        });
-    </script>
+  // マーカーをマップ上に生成
+  labData.forEach(lab => {
+    const marker = document.createElement('div');
+    marker.className = 'marker';
+    marker.style.left = lab.x + '%';
+    marker.style.top = lab.y + '%';
+    marker.innerText = lab.name;
+    
+    // クリック時のイベント
+    marker.onclick = () => openModal(lab);
+    
+    markersLayer.appendChild(marker);
+  });
+
+  // モーダルを開く関数
+  function openModal(lab) {
+    document.getElementById('modal-title').innerText = lab.name;
+    document.getElementById('modal-room').innerText = "場所: " + lab.room;
+    document.getElementById('modal-desc').innerText = lab.desc;
+    
+    const imgEl = document.getElementById('modal-image');
+    if (lab.imgUrl && lab.imgUrl !== "") {
+      imgEl.src = lab.imgUrl;
+      imgEl.style.display = 'block';
+    } else {
+      imgEl.style.display = 'none';
+    }
+
+    document.getElementById('modal-overlay').style.display = 'flex';
+  }
+
+  // モーダルを閉じる関数
+  function closeModal(e) {
+    document.getElementById('modal-overlay').style.display = 'none';
+  }
+</script>
+
 </body>
 </html>
