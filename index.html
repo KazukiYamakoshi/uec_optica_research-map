@@ -161,6 +161,18 @@
     pointer-events: auto;    /* ラベルだけクリック可能にする */
   }
 
+  /* 各建物グループの先頭ラベルの上に表示する建物名 */
+  .building-title {
+    position: absolute;
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translate(0, -100%);
+    padding-bottom: 4px;
+  }
+
   .map-image {
     width: 100%;
     height: auto;
@@ -291,6 +303,106 @@
     border-radius: 10px;
     margin-bottom: 8px;
   }
+
+  /* ============================================================
+     スマートフォン向け（幅 640px 以下）
+     マップ上への重ね表示をやめ、マップ → 研究室一覧の縦並びに切替
+     ============================================================ */
+  @media (max-width: 640px) {
+    body {
+      padding: 8px;
+      overflow-x: hidden;
+    }
+
+    header {
+      margin-bottom: 12px;
+    }
+
+    header h1 {
+      font-size: 1.15rem;
+    }
+
+    header p {
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+
+    .campus-tab {
+      padding: 6px 14px;
+      font-size: 13px;
+    }
+
+    #map-container-east,
+    #map-container-west {
+      display: flex;
+      flex-direction: column;
+      max-width: 100%;
+      padding-bottom: 16px;
+    }
+
+    /* マップを画面幅いっぱいに */
+    .east-map-inner,
+    .west-map-inner {
+      margin-left: 0;
+      margin-right: 0;
+      width: 100%;
+    }
+
+    /* 折れ線は一覧表示では不要 */
+    .leader-svg {
+      display: none;
+    }
+
+    /* ラベル一覧をマップの下に配置 */
+    .labels-layer {
+      position: static;
+      margin-top: 12px;
+      padding: 0 2px;
+    }
+
+    .building-group {
+      margin-bottom: 14px;
+    }
+
+    .building-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .building-title {
+      position: static;
+      transform: none;
+      font-size: 15px;
+      margin: 0 0 6px;
+      padding-bottom: 0;
+    }
+
+    .map-label {
+      position: static;
+      transform: none;
+      display: inline-flex;
+      max-width: 100%;
+      margin: 0 4px 6px 0;
+      white-space: normal;
+    }
+
+    .map-label:hover {
+      transform: scale(1.02);
+    }
+
+    .map-label .marker-room {
+      min-width: 32px;
+      width: 32px;
+      height: 32px;
+      font-size: 11px;
+    }
+
+    .map-label .marker-name {
+      font-size: 13px;
+      padding: 4px 8px;
+      border-radius: 0 14px 14px 0;
+      line-height: 1.35;
+    }
+  }
 </style>
 </head>
 <body>
@@ -357,11 +469,12 @@
   /* ============================================================
      【編集ガイド】このファイルの主な編集箇所
 
-     1. eastBuildings / westBuildings … 建物の位置（マップ画像内 %）
+     1. eastBuildings / westBuildings … 建物の位置（マップ画像内 %）と建物名
      2. eastLabData / westLabData     … 研究室の情報・ラベル位置
      3. CSS の :root                  … サイト全体の色
-     4. CSS の margin-left/right      … ラベル用の余白幅
+     4. CSS の margin-left/right      … ラベル用の余白幅（PC 表示）
      5. header 内の HTML              … ページ上部の説明文
+     6. CSS の @media (max-width: 640px) … スマートフォン向けレイアウト
 
      研究室を追加するときは eastLabData / westLabData に1行追加するだけで OK。
      同じ建物の研究室が2件以上あると、折れ線は自動的に「バス型」になります。
@@ -390,19 +503,22 @@
      labelX    … ラベル左端の位置（コンテナ幅に対する %。0=左端, 100=右端）
      labelY    … ラベル縦中央の位置（コンテナ高さに対する %。上から下へ増える）
      isPrize   … （任意）true にすると景品抽選所スタイルになる
+
+     ※ 建物名は eastBuildings の name が、各 building の最上段ラベルの上に自動表示されます。
+     ※ 東6号館は部屋番号の大きい順（降順）に並べ、labelY は 8 % 刻みで等間隔にしています。
      ---------------------------------------------------------- */
   const eastLabData = [
-    // --- 東6号館（左側に一覧） ---
-    { building: "bld6", name: "宮本 研", room: "東6号館 617", desc: "光波の空間分布に関する新現象の観測・創出・応用", color: "#E07B39", roomLabel: "617", labelX: 2, labelY: 10 },
-    { building: "bld6", name: "岸本 研", room: "東6号館 619", desc: "レーザー冷却を用いた絶対零度近傍の原子集団の生成", color: "#00642D", roomLabel: "619", labelX: 2, labelY: 18 },
-    { building: "bld6", name: "桂川・大饗 研", room: "東6号館 613", desc: "レーザー技術の限界の突破と光学的新展開", color: "#336F6B", roomLabel: "613", labelX: 2, labelY: 26 },
-    { building: "bld6", name: "沈 研", room: "東6号館 506", desc: "低次元量子ドットを用いた太陽電池・LEDの開発・機構解明", color: "#156082", roomLabel: "506", labelX: 2, labelY: 34 },
-    { building: "bld6", name: "奥野 研", room: "東6号館 401", desc: "新規蛍光体材料、ナノ光材料開拓、半導体微細構造", color: "#00642D", roomLabel: "401", labelX: 2, labelY: 48 },
-    { building: "bld6", name: "清水 研", room: "東6号館 416", desc: "光子を操り、光情報通信技術・光計測技術への応用", color: "#E07B39", roomLabel: "416", labelX: 2, labelY: 56 },
-    { building: "bld6", name: "美濃島・浅原・加藤 研", room: "東6号館 314", desc: "「光シンセサイザー」を活用した時間・空間・周波数特性に関する研究", color: "#7B3F9E", roomLabel: "314", labelX: 2, labelY: 64 },
-    { building: "bld6", name: "景品抽選所", room: "東6号館 429", desc: "Photo Rally の景品抽選会場。西・東キャンパスでそれぞれ1枚以上撮影してね！", color: "#C9A000", roomLabel: "429", labelX: 2, labelY: 72, isPrize: true },
+    // --- 東6号館（左側・部屋番号降順・labelY は 22 から 8 % 刻み） ---
+    { building: "bld6", name: "岸本 研", room: "東6号館 619", desc: "レーザー冷却を用いた絶対零度近傍の原子集団の生成", color: "#00642D", roomLabel: "619", labelX: 2, labelY: 22 },
+    { building: "bld6", name: "宮本 研", room: "東6号館 617", desc: "光波の空間分布に関する新現象の観測・創出・応用", color: "#E07B39", roomLabel: "617", labelX: 2, labelY: 30 },
+    { building: "bld6", name: "桂川・大饗 研", room: "東6号館 613", desc: "レーザー技術の限界の突破と光学的新展開", color: "#336F6B", roomLabel: "613", labelX: 2, labelY: 38 },
+    { building: "bld6", name: "沈 研", room: "東6号館 506", desc: "低次元量子ドットを用いた太陽電池・LEDの開発・機構解明", color: "#156082", roomLabel: "506", labelX: 2, labelY: 46 },
+    { building: "bld6", name: "景品抽選所", room: "東6号館 429", desc: "Photo Rally の景品抽選会場。西・東キャンパスでそれぞれ1枚以上撮影してね！", color: "#C9A000", roomLabel: "429", labelX: 2, labelY: 54, isPrize: true },
+    { building: "bld6", name: "清水 研", room: "東6号館 416", desc: "光子を操り、光情報通信技術・光計測技術への応用", color: "#E07B39", roomLabel: "416", labelX: 2, labelY: 62 },
+    { building: "bld6", name: "奥野 研", room: "東6号館 401", desc: "新規蛍光体材料、ナノ光材料開拓、半導体微細構造", color: "#00642D", roomLabel: "401", labelX: 2, labelY: 70 },
+    { building: "bld6", name: "美濃島・浅原・加藤 研", room: "東6号館 314", desc: "「光シンセサイザー」を活用した時間・空間・周波数特性に関する研究", color: "#7B3F9E", roomLabel: "314", labelX: 2, labelY: 78 },
     // --- 東9号館（右上） ---
-    { building: "bld9", name: "渡邉 研", room: "東9号館 107", desc: "光とAI技術の融合", color: "#7B3F9E", roomLabel: "107", labelX: 72, labelY: 8 },
+    { building: "bld9", name: "渡邉 研", room: "東9号館 107", desc: "光とAI技術の融合", color: "#7B3F9E", roomLabel: "107", labelX: 72, labelY: 10 },
     // --- 東3号館 = 地図上の図書館（下） ---
     { building: "bld3", name: "酒井 研", room: "東3号館 10F", desc: "電波天文、星形成、超電導検出器", color: "#336F6B", roomLabel: "10F", labelX: 38, labelY: 88 },
   ];
@@ -448,6 +564,18 @@
   /* ============================================================
      以下は基本的に編集不要（仕組みの説明用コメント付き）
      ============================================================ */
+
+  /** 各建物グループの最上段ラベルの上に建物名を表示 */
+  const BUILDING_TITLE_GAP = 6; // 最上段ラベル中心から建物名までの距離（%）
+
+  function createBuildingTitle(buildingName, labelX, topLabelY) {
+    const el = document.createElement('div');
+    el.className = 'building-title';
+    el.textContent = buildingName;
+    el.style.left = labelX + '%';
+    el.style.top = (topLabelY - BUILDING_TITLE_GAP) + '%';
+    return el;
+  }
 
   /** labData の1件から、画面上のラベル DOM 要素を作る */
   function createLabelChip(lab, campus) {
@@ -555,6 +683,12 @@
 
   /** 建物ごとにラベルをグループ化し、折れ線と建物マーカー（●）を描画 */
   function drawLeaderLines(container, svg, labData, buildings, innerSelector) {
+    // スマホではマップ下の一覧表示のため折れ線は描かない
+    if (window.matchMedia('(max-width: 640px)').matches) {
+      svg.innerHTML = '';
+      return;
+    }
+
     const labels = container.querySelectorAll('.map-label');
     const layout = getMapRect(container, innerSelector);
 
@@ -618,18 +752,41 @@
     );
   }
 
-  /** ラベルを生成してから折れ線を描画 */
-  function renderCampusMap(labelsId, labData, campus, drawFn) {
+  /** 建物ごとにラベルを生成してから折れ線を描画 */
+  function renderCampusMap(labelsId, labData, campus, drawFn, buildings) {
     const labelsLayer = document.getElementById(labelsId);
     labelsLayer.innerHTML = '';
+
+    // labData 内の出現順で建物を並べる
+    const buildingOrder = [];
     labData.forEach(lab => {
-      labelsLayer.appendChild(createLabelChip(lab, campus));
+      if (!buildingOrder.includes(lab.building)) buildingOrder.push(lab.building);
     });
-    requestAnimationFrame(drawFn); // ラベル配置後に折れ線を計算
+
+    buildingOrder.forEach(buildingKey => {
+      const labs = labData.filter(l => l.building === buildingKey);
+      const groupEl = document.createElement('div');
+      groupEl.className = 'building-group';
+
+      if (buildings) {
+        const topLab = labs.reduce((a, b) => (a.labelY < b.labelY ? a : b));
+        groupEl.appendChild(
+          createBuildingTitle(buildings[buildingKey].name, topLab.labelX, topLab.labelY)
+        );
+      }
+
+      labs.forEach(lab => {
+        groupEl.appendChild(createLabelChip(lab, campus));
+      });
+
+      labelsLayer.appendChild(groupEl);
+    });
+
+    requestAnimationFrame(drawFn);
   }
 
   function renderEastMap() {
-    renderCampusMap('labels-east', eastLabData, 'east', drawEastLeaderLines);
+    renderCampusMap('labels-east', eastLabData, 'east', drawEastLeaderLines, eastBuildings);
   }
 
   function renderWestMap() {
