@@ -15,7 +15,7 @@
     --teal-dark: #336F6B;   /* 濃いティール（見出し・建物マーカー） */
     --green-dark: #00642D;  /* ラベルのデフォルト枠色 */
     --bg: #FDFFF3;          /* ページ背景色 */
-    --marker-bg: #FAFFE7;   /* 部屋番号（丸）の背景色 */
+    --marker-bg: #FAFFE7;   /* 部屋番号ボックスの背景色 */
     --building-title-size: 30px;        /* 建物名（東6号館など）PC 表示のフォントサイズ */
     --building-title-size-mobile: 15px; /* 建物名のスマホ表示のフォントサイズ */
   }
@@ -93,6 +93,11 @@
     display: block;          /* タブ選択時に表示 */
   }
 
+  /* 西キャンパス: 左右ラベル用にセクション幅を広げる（マップ自体は 900px のまま） */
+  #map-section-west {
+    max-width: min(1300px, 100%);
+  }
+
   /* 東キャンパス用コンテナ */
   #map-container-east {
     position: relative;      /* ラベル・折れ線の基準位置 */
@@ -106,9 +111,9 @@
   #map-container-west {
     position: relative;
     width: 100%;
-    max-width: 900px;
+    max-width: min(1300px, 100%);
     margin: 0 auto;
-    padding-bottom: 48px;    /* 下側ラベル（西7号館など）用の余白 */
+    padding-bottom: 100px;   /* 下側ラベル（一色研など）用の余白 */
   }
 
   /* マップ画像を包む枠（重ね順: 1 = 最背面） */
@@ -122,10 +127,29 @@
     margin-left: 34%;        /* ← 左の余白幅（%）。ラベルが入るスペース */
   }
 
-  /* 西: 左右両方にラベルを置くため、マップを中央に寄せる */
-  .west-map-inner {
-    margin-left: 28%;        /* ← 左の余白幅（%） */
-    margin-right: 22%;       /* ← 右の余白幅（%） */
+  /* 西 PC: 3列グリッド（左ラベル | マップ900px | 右ラベル）。マップ幅は縮めない */
+  @media (min-width: 641px) {
+    #map-container-west {
+      display: grid;
+      grid-template-columns: minmax(150px, 1fr) min(900px, calc(100% - 300px)) minmax(150px, 1fr);
+    }
+
+    .west-map-inner {
+      grid-column: 2;
+      width: 100%;
+    }
+
+    #map-container-west .map-label:not(.label-right),
+    #map-container-west .building-title:not(.label-right) {
+      max-width: calc((100% - min(900px, calc(100% - 300px))) / 2 - 10px);
+    }
+
+    #map-container-west .map-label.label-right,
+    #map-container-west .building-title.label-right {
+      left: auto;
+      right: 2%;
+      max-width: calc((100% - min(900px, calc(100% - 300px))) / 2 - 10px);
+    }
   }
 
   .campus-map-inner .map-image {
@@ -181,12 +205,15 @@
     display: block;
   }
 
-  /* --- 研究室ラベル（丸 + 名前） --- */
+  /* --- 研究室ラベル（角丸ピル：部屋番号ボックス + 研名） --- */
   .map-label {
     position: absolute;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0;
+    gap: 10px;
+    padding: 5px 14px 5px 5px;
+    background: var(--marker-color, var(--green-dark));
+    border-radius: 10px;
     cursor: pointer;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
     transition: transform 0.15s ease;
@@ -200,47 +227,48 @@
     z-index: 10;
   }
 
-  /* 部屋番号（左側の丸） */
+  /* 部屋番号（左側の角丸四角） */
   .marker-room,
   .map-label .marker-room {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 40px;
-    height: 40px;
-    border-radius: 50%;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 4px;
+    border-radius: 6px;
     background: var(--marker-bg);
-    border: 2px solid var(--marker-color, var(--green-dark));
-    font-size: 16px;         /* 部屋番号の文字サイズ */
+    border: none;
+    font-size: 16px;
     font-weight: bold;
     color: var(--marker-color, var(--green-dark));
     flex-shrink: 0;
   }
 
-  /* 研究室名（右側の色付きラベル） */
+  /* 研究室名（ピル右側・白文字） */
   .marker-name,
   .map-label .marker-name {
-    background: var(--marker-color, var(--green-dark));
+    background: transparent;
     color: #fff;
-    padding: 6px 11px;
-    border-radius: 0 18px 18px 0;
-    font-size: 17px;         /* 研究室名の文字サイズ */
+    padding: 0;
+    border-radius: 0;
+    font-size: 17px;
     font-weight: bold;
-    margin-left: -4px;
+    margin-left: 0;
   }
 
   /* 景品抽選所専用スタイル（isPrize: true の項目） */
+  .map-label.prize {
+    background: #FCE15A;
+  }
+
   .map-label.prize .marker-room {
-    border-color: #C9A000;
     color: #8A6D00;
     background: #FEF8D6;
   }
 
   .map-label.prize .marker-name {
-    background: #FCE15A;
     color: #333;
-    border: 2px solid #C9A000;
-    border-left: none;
   }
 
   /* --- クリック時の詳細ポップアップ（モーダル） --- */
@@ -385,6 +413,10 @@
       max-width: 100%;
       margin: 0 4px 6px 0;
       white-space: normal;
+      left: auto !important;
+      right: auto !important;
+      padding: 4px 10px 4px 4px;
+      gap: 8px;
     }
 
     .map-label:hover {
@@ -392,16 +424,16 @@
     }
 
     .map-label .marker-room {
-      min-width: 32px;
-      width: 32px;
-      height: 32px;
+      min-width: 30px;
+      width: auto;
+      height: 30px;
+      padding: 0 3px;
       font-size: 11px;
+      border-radius: 5px;
     }
 
     .map-label .marker-name {
       font-size: 13px;
-      padding: 4px 8px;
-      border-radius: 0 14px 14px 0;
       line-height: 1.35;
     }
   }
@@ -474,7 +506,7 @@
      1. eastBuildings / westBuildings … 建物の位置（マップ画像内 %）と建物名
      2. eastLabData / westLabData     … 研究室の情報・ラベル位置
      3. CSS の :root                  … サイト全体の色
-     4. CSS の margin-left/right      … ラベル用の余白幅（PC 表示）
+     4. CSS の margin-left（東）/ 西 grid-template-columns … ラベル用余白（PC 表示）
      5. header 内の HTML              … ページ上部の説明文
      6. CSS の @media (max-width: 640px) … スマートフォン向けレイアウト
 
@@ -505,8 +537,10 @@
      room      … 場所の説明（モーダルに「場所: 〜」として表示）
      desc      … 研究内容の説明（モーダル本文）
      color     … ラベルの色（#から始まる16進数）
-     roomLabel … 丸の中に表示する部屋番号
-     labelX    … ラベル左端の位置（コンテナ幅に対する %。0=左端, 100=右端）
+     roomLabel … 部屋番号ボックス内に表示する部屋番号
+     labelX    … ラベル左端の位置（左側一覧）。右側は labelAlign: "right" を使う
+     labelAlign … （任意）"right" で右余白内に配置（西2・西1号館）
+     labelRight … labelAlign:"right" 時の右端からの距離（%）。省略時 2
      labelY    … ラベル縦中央の位置（コンテナ高さに対する %。上から下へ増える）
      isPrize   … （任意）true にすると景品抽選所スタイルになる
 
@@ -543,7 +577,7 @@
   /* ----------------------------------------------------------
      西キャンパス: 研究室データ（形式は eastLabData と同じ）
      西1号館 … 一色研 / 西2号館 … 張・庄司・中村・坂野 / 西7号館 … その他
-     labelX が小さい → 左側の一覧、大きい（例: 74）→ 右側の一覧
+     labelX: 2 … 西7号館（左余白） / labelAlign: "right" … 西2・西1号館（右余白）
      ※ 西マップは横長のため、PC 表示の labelY 刻みは 10 %（東6号館は 8 %）
      ---------------------------------------------------------- */
   const westLabData = [
@@ -555,13 +589,13 @@
     { building: "bld7", name: "Nayak 研", room: "西7号館 413", desc: "ナノファイバー上での光と物質の量子的な相互作用", color: "#E07B39", roomLabel: "413", labelX: 2, labelY: 64 },
     { building: "bld7", name: "丹治 研", room: "西7号館 413", desc: "光と原子の量子状態制御を基盤とした量子技術の創出", color: "#336F6B", roomLabel: "413", labelX: 2, labelY: 74 },
     { building: "bld7", name: "戸倉川 研", room: "西7号館 114", desc: "光の特性を生かした新奇レーザー装置の開発とその応用", color: "#E07B39", roomLabel: "114", labelX: 2, labelY: 84 },
-    // --- 西2号館（右側・4件 → バス型折れ線） ---
-    { building: "bld2", name: "張 研", room: "西2号館 421", desc: "不思議な光量子状態の生成および応用", color: "#E07B39", roomLabel: "421", labelX: 74, labelY: 32 },
-    { building: "bld2", name: "坂野 研", room: "西2号館 409", desc: "ナノトライボロジー、物性理論、計算物質科学", color: "#336F6B", roomLabel: "409", labelX: 74, labelY: 42 },
-    { building: "bld2", name: "中村 研", room: "西2号館 325", desc: "計算機シミュレーションを用いた原子レベル物質設計", color: "#156082", roomLabel: "325", labelX: 74, labelY: 52 },
-    { building: "bld2", name: "庄司 研", room: "西2号館 309", desc: "レーザーでナノを作って、見て、触って、動かす", color: "#7B3F9E", roomLabel: "309", labelX: 74, labelY: 62 },
-    // --- 西1号館（下段右） ---
-    { building: "bld1", name: "一色 研", room: "西1号館 213", desc: "光集積回路、光コンピューティング、光増幅、光電融合", color: "#156082", roomLabel: "213", labelX: 74, labelY: 76 },
+    // --- 西2号館（右余白・4件 → バス型折れ線） ---
+    { building: "bld2", name: "張 研", room: "西2号館 421", desc: "不思議な光量子状態の生成および応用", color: "#E07B39", roomLabel: "421", labelAlign: "right", labelY: 32 },
+    { building: "bld2", name: "坂野 研", room: "西2号館 409", desc: "ナノトライボロジー、物性理論、計算物質科学", color: "#336F6B", roomLabel: "409", labelAlign: "right", labelY: 42 },
+    { building: "bld2", name: "中村 研", room: "西2号館 325", desc: "計算機シミュレーションを用いた原子レベル物質設計", color: "#156082", roomLabel: "325", labelAlign: "right", labelY: 52 },
+    { building: "bld2", name: "庄司 研", room: "西2号館 309", desc: "レーザーでナノを作って、見て、触って、動かす", color: "#7B3F9E", roomLabel: "309", labelAlign: "right", labelY: 62 },
+    // --- 西1号館（右余白・庄司研から 3 倍の間隔） ---
+    { building: "bld1", name: "一色 研", room: "西1号館 213", desc: "光集積回路、光コンピューティング、光増幅、光電融合", color: "#156082", roomLabel: "213", labelAlign: "right", labelY: 104 },
   ];
 
   /* モーダルに表示するキャンパス名 */
@@ -574,22 +608,31 @@
   /** 各建物グループの最上段ラベルの上に建物名を表示 */
   const BUILDING_TITLE_GAP = 2; // 最上段ラベル中心から建物名までの距離（%）。全体調整用
 
-  function createBuildingTitle(building, labelX, topLabelY) {
+  function applyLabelHorizontal(el, lab, offsetX) {
+    const ox = offsetX || 0;
+    if (lab.labelAlign === 'right') {
+      el.style.left = 'auto';
+      el.style.right = ((lab.labelRight ?? 2) + ox) + '%';
+    } else {
+      el.style.right = 'auto';
+      el.style.left = ((lab.labelX ?? 2) + ox) + '%';
+    }
+  }
+
+  function createBuildingTitle(building, topLab) {
     const el = document.createElement('div');
-    el.className = 'building-title';
+    el.className = 'building-title' + (topLab.labelAlign === 'right' ? ' label-right' : '');
     el.textContent = building.name;
-    const offsetX = building.titleOffsetX || 0;
-    const offsetY = building.titleOffsetY || 0;
-    el.style.left = (labelX + offsetX) + '%';
-    el.style.top = (topLabelY - BUILDING_TITLE_GAP + offsetY) + '%';
+    applyLabelHorizontal(el, topLab, building.titleOffsetX || 0);
+    el.style.top = (topLab.labelY - BUILDING_TITLE_GAP + (building.titleOffsetY || 0)) + '%';
     return el;
   }
 
   /** labData の1件から、画面上のラベル DOM 要素を作る */
   function createLabelChip(lab, campus) {
     const el = document.createElement('div');
-    el.className = 'map-label' + (lab.isPrize ? ' prize' : '');
-    el.style.left = lab.labelX + '%';   // ラベルの横位置
+    el.className = 'map-label' + (lab.isPrize ? ' prize' : '') + (lab.labelAlign === 'right' ? ' label-right' : '');
+    applyLabelHorizontal(el, lab, 0);
     el.style.top = lab.labelY + '%';    // ラベルの縦位置
     el.style.setProperty('--marker-color', lab.color); // CSS 変数で色を渡す
     el.dataset.campus = campus;
@@ -750,9 +793,28 @@
     );
   }
 
+  /** 右余白ラベル: 同一建物内で幅を揃え、左端を揃える */
+  function equalizeRightLabelWidths(container) {
+    if (window.matchMedia('(max-width: 640px)').matches) return;
+
+    container.querySelectorAll('.building-group').forEach(group => {
+      const labels = [...group.querySelectorAll('.map-label.label-right')];
+      if (labels.length < 2) return;
+
+      labels.forEach(el => { el.style.width = ''; });
+      const maxW = Math.max(...labels.map(el => el.getBoundingClientRect().width));
+      labels.forEach(el => { el.style.width = maxW + 'px'; });
+
+      const title = group.querySelector('.building-title.label-right');
+      if (title) title.style.width = maxW + 'px';
+    });
+  }
+
   function drawWestLeaderLines() {
+    const container = document.getElementById('map-container-west');
+    equalizeRightLabelWidths(container);
     drawLeaderLines(
-      document.getElementById('map-container-west'),
+      container,
       document.getElementById('leader-lines-west'),
       westLabData,
       westBuildings,
@@ -779,7 +841,7 @@
       if (buildings) {
         const topLab = labs.reduce((a, b) => (a.labelY < b.labelY ? a : b));
         groupEl.appendChild(
-          createBuildingTitle(buildings[buildingKey], topLab.labelX, topLab.labelY)
+          createBuildingTitle(buildings[buildingKey], topLab)
         );
       }
 
